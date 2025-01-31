@@ -1,76 +1,42 @@
 import streamlit as st
+import os
 
+# Define file paths
+CHEAT_SHEET_FILE = "kubernetes_cheat_sheet.md"
+DOCS_DIR = "docs"
+
+def list_markdown_files(directory):
+    """Lists all markdown files in the given directory."""
+    if not os.path.exists(directory):
+        return []
+    return [f for f in os.listdir(directory) if f.endswith(".md")]
+
+def display_markdown_file(filepath):
+    """Displays the contents of a Markdown file."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            content = file.read()
+            st.markdown(content)
+    except Exception as e:
+        st.error(f"Error loading {filepath}: {e}")
+        
 def main():
-    """
-    Main function to render the Kubernetes Commands Cheat Sheet in a Streamlit app.
+    st.sidebar.title("Documentation")
 
-    This app provides information on Kubernetes commands for managing namespaces and pods,
-    including examples and explanations of common statuses.
-    """
-    st.title("Kubernetes Commands Cheat Sheet")
+    # Get list of Markdown files
+    markdown_files = list_markdown_files(DOCS_DIR)
 
-    st.header("Namespaces")
-    st.code("""
-    # List all namespaces
-    kubectl get namespaces
+    if not markdown_files:
+        st.sidebar.write("No documentation available.")
+        return
 
-    # Shorter version
-    kubectl get ns
+    # Sidebar navigation for markdown files
+    selected_file = st.sidebar.radio("Select a document", markdown_files)
 
-    # Describe a specific namespace
-    kubectl describe namespace <namespace-name>
+    # Display the selected document
+    st.title(selected_file)
+    display_markdown_file(os.path.join(DOCS_DIR, selected_file))
 
-    # Filter namespaces by label
-    kubectl get namespaces -l <label-key>=<label-value>
-
-    # Set default namespace for current context
-    kubectl config set-context --current --namespace=<namespace-name>
-    """, language="bash")
-
-    st.header("Pods")
-    st.code("""
-    # List all pods in the current namespace
-    kubectl get pods
-
-    # List all pods across all namespaces
-    kubectl get pods --all-namespaces
-
-    # List pods in a specific namespace
-    kubectl get pods -n <namespace-name>
-
-    # View detailed info for a specific pod
-    kubectl describe pod <pod-name> -n <namespace-name>
-
-    # View logs for a pod's container
-    kubectl logs <pod-name> -n <namespace-name>
-
-    # For multi-container pods
-    kubectl logs <pod-name> -n <namespace-name> -c <container-name>
-
-    # Filter pods by label
-    kubectl get pods -l <label-key>=<label-value> -n <namespace-name>
-
-    # Monitor pods in real-time
-    kubectl get pods -w
-
-    # Show which nodes pods are running on
-    kubectl get pods -o wide
-    """, language="bash")
-
-    st.header("Common Pod Statuses")
-    st.table({
-        "STATUS": ["Running", "Pending", "CrashLoopBackOff", "Completed", "Evicted"],
-        "Meaning": [
-            "Pod is up and running.",
-            "Pod is waiting for resources or prerequisites.",
-            "Pod's containers are repeatedly crashing.",
-            "Pod has finished its task (e.g., for jobs).",
-            "Pod was removed due to resource constraints."
-        ]
-    })
-
-    st.markdown("---")
-    st.markdown("Keep this cheat sheet handy to quickly manage Kubernetes namespaces and pods!")
 
 if __name__ == "__main__":
     main()
