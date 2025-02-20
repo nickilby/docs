@@ -48,8 +48,6 @@
 **Storage Policies:**
 - **Local Volume Policy:** Moves data when disk is 80% full.
 - **S3 Volume Policy:** Moves parts older than 60 days to Minio.
-- **Data Backup & Snapshots:** Use ZFS snapshots for local disks and ensure Minio/S3 is backed up if long-term storage is needed.
-
 ---
 
 ### **Table Creation & Replication**
