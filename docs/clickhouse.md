@@ -17,7 +17,7 @@
 **Endpoints:**
 - **HTTP API**: `http://clickhouse.zengenti.io:8123`
 - **Native Protocol (TCP)**: `clickhouse.zengenti.io:9000`
-- **Prometheus Metrics**: `http://clickhouse.zengenti.io:9363/metrics`
+- **Prometheus Metrics**: `[http://clickhouse.zengenti.io:9363/metrics](https://grafana.zengenti.com/d/thEkJB_Mz/clickhouse?orgId=1&refresh=30s)`
 
 **HAProxy Configuration:**
 - HAProxy is configured to balance load evenly across `z-click-01` and `z-click-02`.
