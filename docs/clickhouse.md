@@ -5,8 +5,8 @@
 ### **Overview of the ClickHouse Setup**
 
 **Architecture:**
-- The ClickHouse cluster consists of **two nodes**: `CH1`, `CH2`.
-- **ZooKeeper Cluster** (for metadata sync and quorum): `ZK1`, `ZK2`, `ZK3`.
+- The ClickHouse cluster consists of **two nodes**: `z-click-01`, `z-click-02`.
+- **ZooKeeper Cluster** (for metadata sync and quorum): `z-click-keeper-01`, `z-click-keeper-02`, `z-click-keeper-03`.
 - **HAProxy** is now used as the load balancer, distributing queries to both ClickHouse nodes.
 - ClickHouse nodes are set up for **internal replication** across shards.
 
@@ -17,18 +17,14 @@
 **Endpoints:**
 - **HTTP API**: `http://clickhouse.zengenti.io:8123`
 - **Native Protocol (TCP)**: `clickhouse.zengenti.io:9000`
-- **MySQL Compatibility**: `clickhouse.zengenti.io:9004`
-- **PostgreSQL Compatibility**: `clickhouse.zengenti.io:9005`
 - **Prometheus Metrics**: `http://clickhouse.zengenti.io:9363/metrics`
 
 **HAProxy Configuration:**
-- HAProxy is configured to balance load evenly across `CH1` and `CH2`.
+- HAProxy is configured to balance load evenly across `z-click-01` and `z-click-02`.
 - Both read and write queries should be directed to the HAProxy endpoint (`clickhouse.zengenti.io`) for optimal distribution.
 
 **Users & Authentication:**
 - **Admin User:** `admin` / `poetry-gangsta-SERBIA`
-- **Read-Only User:** `readonly` / `readonly`
-- **Default User:** No password required.
 
 ---
 
@@ -53,6 +49,48 @@
 - **Local Volume Policy:** Moves data when disk is 80% full.
 - **S3 Volume Policy:** Moves parts older than 60 days to Minio.
 - **Data Backup & Snapshots:** Use ZFS snapshots for local disks and ensure Minio/S3 is backed up if long-term storage is needed.
+
+---
+
+### **Table Creation & Replication**
+
+- When creating tables, ensure the table is created on all ClickHouse nodes (`z-click-01`, `z-click-02`).
+- After table creation, create a **Distributed Table** to ensure data synchronization between nodes.
+- Use the **production** storage policy when defining table storage to optimize performance and scalability.
+
+Example:
+
+```sql
+CREATE DATABASE IF NOT EXISTS uk_prices;
+
+CREATE TABLE uk_prices.price_paid
+(
+    transaction_id UUID,
+    price UInt32,
+    date_of_transfer Date,
+    postcode String,
+    property_type Enum8('D' = 1, 'S' = 2, 'T' = 3, 'F' = 4, 'O' = 5),
+    old_new Enum8('Y' = 1, 'N' = 2),
+    duration Enum8('F' = 1, 'L' = 2),
+    paon String,
+    saon String,
+    street String,
+    locality String,
+    town_city String,
+    district String,
+    county String,
+    ppd_category Enum8('A' = 1, 'B' = 2),
+    record_status Enum8('A' = 1, 'C' = 2)
+)
+ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/uk_prices/price_paid', '{replica}')
+PARTITION BY toYYYYMM(date_of_transfer)
+ORDER BY (postcode, date_of_transfer)
+SETTINGS storage_policy = 'production';
+
+CREATE TABLE default.uk_price_paid AS uk_prices.price_paid
+ENGINE = Distributed('clickhouse', 'uk_prices', 'price_paid', rand());
+
+```
 
 ---
 
@@ -81,7 +119,7 @@
 
 ### **Monitoring & Alerting**
 
-- **Prometheus Integration:** The cluster exposes metrics at `/metrics` on port `9363`. Ensure Prometheus is scraping this endpoint for performance and health metrics.
+- **Prometheus Integration:** The cluster exposes metrics at `/metrics` on port `9363`.
 - **Alerting:** Set up Prometheus alerting rules based on metrics like `max_memory_usage`, `max_connections`, and system health.
 
 ---
@@ -91,8 +129,4 @@
 - **Backup Strategy:** If using S3, consider lifecycle rules to archive or delete old data.
 - **Replication & Quorum:** Ensure ZooKeeper nodes maintain a quorum for high availability.
 - **Testing:** Before deploying in production, test your integration in a staging environment to validate query performance and storage behavior.
-
----
-
-Let me know if you need specific code snippets, HAProxy configuration details, or further assistance with integrating ClickHouse into your application!
 
